@@ -104,6 +104,33 @@ void debug_ring_callback(uart_ring *ring) {
   }
 }
 
+
+// TODO: move this and make a smart_dsu board
+// **** fake DSU **** //
+#define CAN CAN1
+
+void send_spoof_acc(void){
+  uint8_t dat[8];
+  dat[0] = 0x00;
+  dat[1] = 0x00;
+  dat[2] = 0x63;
+  dat[3] = 0xc0;
+  dat[4] = 0x00;
+  dat[5] = 0x00;
+  dat[6] = 0x00;
+  dat[7] = 0x71;
+  CAN->sTxMailBox[0].TDLR = dat[0] | (dat[1] << 8) | (dat[2] << 16) | (dat[3] << 24);
+  CAN->sTxMailBox[0].TDHR = dat[4] | (dat[5] << 8) | (dat[6] << 16) | (dat[7] << 24);
+  CAN->sTxMailBox[0].TDTR = 8;
+  CAN->sTxMailBox[0].TIR = (0x343U << 21) | 1U;
+}
+
+void send_id(void){
+  CAN->sTxMailBox[0].TDLR = 0x00;
+  CAN->sTxMailBox[0].TDTR = 4;
+  CAN->sTxMailBox[0].TIR = (0x2FFU << 21) | 1U;
+}
+
 // ****************************** safety mode ******************************
 
 // this is the only way to leave silent mode
@@ -719,8 +746,8 @@ void TIM1_BRK_TIM9_IRQ_Handler(void) {
         puts("EON hasn't sent a heartbeat for 0x");
         puth(heartbeat_counter);
         puts(" seconds. Safety is set to SILENT mode.\n");
-        if (current_safety_mode != SAFETY_SILENT) {
-          set_safety_mode(SAFETY_SILENT, 0U);
+        if (current_safety_mode != SAFETY_ALLOUTPUT) {
+          set_safety_mode(SAFETY_ALLOUTPUT, 17U);
         }
         if (power_save_status != POWER_SAVE_STATUS_ENABLED) {
           set_power_save_state(POWER_SAVE_STATUS_ENABLED);
@@ -835,7 +862,8 @@ int main(void) {
   // use TIM2->CNT to read
 
   // init to SILENT and can silent
-  set_safety_mode(SAFETY_SILENT, 0);
+  //set_safety_mode(SAFETY_SILENT, 0);
+  set_safety_mode(SAFETY_ALLOUTPUT, 17U);
 
   // enable CAN TXs
   current_board->enable_can_transcievers(true);
